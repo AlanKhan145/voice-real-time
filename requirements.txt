@@ -1,0 +1,20 @@
+# ── Core ASR ──────────────────────────────────────────────────────────────────
+# RealtimeSTT wraps faster-whisper + VAD (silero + webrtcvad)
+RealtimeSTT>=0.3.104
+
+# ── Speech processing ─────────────────────────────────────────────────────────
+faster-whisper>=1.0.3
+sounddevice>=0.4.7
+numpy>=1.26.0
+
+# ── Speaker diarization (optional but recommended) ────────────────────────────
+# Uncomment to enable resemblyzer-based speaker tracking:
+# resemblyzer>=0.1.4
+
+# ── Translation (optional but recommended) ────────────────────────────────────
+# Offline translation via CTranslate2-backed models:
+# argostranslate>=1.9.6
+
+# ── Dev / test ────────────────────────────────────────────────────────────────
+pytest>=8.0.0
+pytest-asyncio>=0.23.0

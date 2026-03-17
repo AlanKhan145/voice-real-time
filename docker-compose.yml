@@ -1,0 +1,91 @@
+version: "3.9"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# realtime-subtitle  docker-compose
+#
+# CPU mode (default):
+#   docker compose up
+#
+# GPU mode:
+#   docker compose --profile gpu up
+#
+# Pass microphone from host:
+#   The container needs access to /dev/snd (ALSA) or PulseAudio socket.
+#   See the service definition below for options.
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── CPU build ──────────────────────────────────────────────────────────────
+  realtime-subtitle:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: realtime-subtitle:latest
+    stdin_open: true
+    tty: true
+
+    # ── Microphone access ─────────────────────────────────────────────────────
+    # Option 1: ALSA direct (common on bare Linux)
+    devices:
+      - /dev/snd:/dev/snd
+    group_add:
+      - audio
+
+    # Option 2: PulseAudio (uncomment if using PulseAudio)
+    # environment:
+    #   PULSE_SERVER: unix:${XDG_RUNTIME_DIR}/pulse/native
+    # volumes:
+    #   - ${XDG_RUNTIME_DIR}/pulse/native:${XDG_RUNTIME_DIR}/pulse/native
+    # group_add:
+    #   - audio
+
+    env_file:
+      - .env
+
+    environment:
+      DEVICE: cpu
+      COMPUTE_TYPE: int8
+
+    # Persist downloaded models between runs
+    volumes:
+      - whisper-models:/root/.cache/huggingface
+      - argos-models:/root/.local/share/argos-translate
+
+  # ── GPU build (NVIDIA) ─────────────────────────────────────────────────────
+  realtime-subtitle-gpu:
+    profiles: [gpu]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: realtime-subtitle:latest
+    stdin_open: true
+    tty: true
+
+    devices:
+      - /dev/snd:/dev/snd
+    group_add:
+      - audio
+
+    env_file:
+      - .env
+
+    environment:
+      DEVICE: cuda
+      COMPUTE_TYPE: float16
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+    volumes:
+      - whisper-models:/root/.cache/huggingface
+      - argos-models:/root/.local/share/argos-translate
+
+volumes:
+  whisper-models:
+  argos-models:
