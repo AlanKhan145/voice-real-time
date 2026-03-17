@@ -1,8 +1,7 @@
 # ── Core ASR ──────────────────────────────────────────────────────────────────
-# Không dùng RealtimeSTT (phụ thuộc PyAudio). Dùng sounddevice + faster-whisper + webrtcvad.
+# Không dùng RealtimeSTT (PyAudio) hay webrtcvad (pkg_resources). Dùng sounddevice + faster-whisper + energy VAD.
 faster-whisper>=1.0.3
 sounddevice>=0.4.7
-webrtcvad>=2.0.10
 numpy>=1.26.0
 
 # ── Speaker diarization (optional but recommended) ────────────────────────────

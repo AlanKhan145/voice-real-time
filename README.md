@@ -692,8 +692,7 @@ Dự án này được thiết kế để chạy hoàn toàn local, không phụ
 |---|---|---|
 | `faster-whisper` | Engine transcription (CTranslate2) | Có |
 | `sounddevice` | Microphone capture (không cần PyAudio) | Có |
-| `webrtcvad` | Voice activity detection | Có |
-| `numpy` | Xử lý audio PCM | Có |
+| `numpy` | Xử lý audio PCM + energy VAD | Có |
 | `resemblyzer` | Voice embedding cho speaker tracking | Không (fallback heuristic) |
 | `argostranslate` | Offline translation | Không (fallback noop) |
 | `pytest`, `pytest-asyncio` | Test | Dev only |

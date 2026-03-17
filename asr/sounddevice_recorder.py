@@ -1,9 +1,9 @@
 """
-SoundDeviceRecorder — realtime ASR dùng sounddevice + faster-whisper + webrtcvad.
+SoundDeviceRecorder — realtime ASR dùng sounddevice + faster-whisper + energy VAD.
 
-Thay thế RealtimeSTT (PyAudio) để tránh lỗi build trên Linux.
-- sounddevice: ghi âm từ microphone (có sẵn wheel, không cần compile)
-- webrtcvad: phát hiện voice activity (pure Python)
+Thay thế RealtimeSTT (PyAudio) và webrtcvad (pkg_resources).
+- sounddevice: ghi âm từ microphone
+- energy-based VAD: phát hiện speech/silence (không phụ thuộc pkg_resources)
 - faster-whisper: transcription
 """
 from __future__ import annotations
@@ -17,7 +17,6 @@ from typing import Optional
 
 import numpy as np
 import sounddevice as sd
-import webrtcvad
 from faster_whisper import WhisperModel
 
 from app.config import Config
@@ -90,8 +89,9 @@ class SoundDeviceRecorder:
         self._realtime_model: Optional[WhisperModel] = None
         self._model_lock = threading.Lock()
 
-        # VAD
-        self._vad = webrtcvad.Vad(config.webrtc_sensitivity)
+        # Energy-based VAD (không dùng webrtcvad/pkg_resources)
+        # webrtc_sensitivity 0-3: 0=sensitive, 3=strict
+        self._energy_threshold = 200 + 200 * config.webrtc_sensitivity
 
         # Trạng thái ghi âm
         self._utterance_buffer: list[bytes] = []
@@ -193,7 +193,7 @@ class SoundDeviceRecorder:
         frame_bytes = indata.tobytes()
         self._append_audio_chunk(frame_bytes)
 
-        is_speech = self._vad.is_speech(frame_bytes, _SAMPLE_RATE)
+        is_speech = self._is_speech_energy(frame_bytes)
 
         if is_speech:
             self._utterance_buffer.append(frame_bytes)
@@ -339,6 +339,12 @@ class SoundDeviceRecorder:
         )
         self._bus.publish_threadsafe(event)
         logger.info("Sentence finalized [%s]: %s", task.segment_id, final_text)
+
+    def _is_speech_energy(self, frame_bytes: bytes) -> bool:
+        """Energy-based VAD: RMS > threshold = speech."""
+        samples = np.frombuffer(frame_bytes, dtype=np.int16)
+        rms = np.sqrt(np.mean(samples.astype(np.float64) ** 2))
+        return rms > self._energy_threshold
 
     def _append_audio_chunk(self, chunk: bytes) -> None:
         if not chunk:
