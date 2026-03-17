@@ -107,8 +107,11 @@ pip install -U pip
 pip install -r requirements.txt
 ```
 
-> **Lần đầu chạy**, RealtimeSTT sẽ tự tải model Whisper (`base` ≈ 150 MB) về
+> **Lần đầu chạy**, faster-whisper sẽ tự tải model Whisper (`base` ≈ 150 MB) về
 > `~/.cache/huggingface/`. Kết nối internet cần thiết **chỉ trong lần đầu**.
+>
+> **Lưu ý:** Project dùng `sounddevice` + `webrtcvad` thay cho RealtimeSTT (PyAudio)
+> để tránh lỗi build trên Linux. Không cần cài `portaudio19-dev` hay `python3-dev`.
 
 ### Bước 3 — (Khuyến nghị) Cài speaker + translation backend
 
@@ -594,10 +597,15 @@ rm -rf ~/.local/share/argos-translate/
 
 **`OSError: PortAudio library not found`**
 
+Project dùng `sounddevice` (không dùng PyAudio). Nếu gặp lỗi:
+
+```bash
+pip install --force-reinstall sounddevice
+```
+
+Trên Linux, `sounddevice` thường có sẵn wheel. Nếu vẫn lỗi, cài `portaudio19-dev`:
 ```bash
 sudo apt install portaudio19-dev
-# Sau đó reinstall sounddevice
-pip install --force-reinstall sounddevice
 ```
 
 **Không tìm thấy microphone**
@@ -682,9 +690,9 @@ Dự án này được thiết kế để chạy hoàn toàn local, không phụ
 
 | Package | Vai trò | Bắt buộc |
 |---|---|---|
-| `RealtimeSTT` | VAD + streaming Whisper wrapper | Có |
 | `faster-whisper` | Engine transcription (CTranslate2) | Có |
-| `sounddevice` | Microphone capture | Có |
+| `sounddevice` | Microphone capture (không cần PyAudio) | Có |
+| `webrtcvad` | Voice activity detection | Có |
 | `numpy` | Xử lý audio PCM | Có |
 | `resemblyzer` | Voice embedding cho speaker tracking | Không (fallback heuristic) |
 | `argostranslate` | Offline translation | Không (fallback noop) |

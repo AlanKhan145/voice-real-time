@@ -93,7 +93,7 @@ async def run(config: Config) -> None:
     from core.models import EventType, make_session_id
     from core.session_manager import SessionManager
     from core.patch_updater import PatchUpdater
-    from asr.realtime_recorder import RealtimeRecorder
+    from asr.sounddevice_recorder import SoundDeviceRecorder
     from workers.speaker_worker import SpeakerWorker
     from workers.translation_worker import TranslationWorker
     from cli.console_renderer import ConsoleRenderer
@@ -126,7 +126,7 @@ async def run(config: Config) -> None:
     patch_updater = PatchUpdater(event_bus, session_manager)
 
     # ── Recorder ──────────────────────────────────────────────────────────
-    recorder = RealtimeRecorder(
+    recorder = SoundDeviceRecorder(
         config=config,
         event_bus=event_bus,
         session_id=session_id,

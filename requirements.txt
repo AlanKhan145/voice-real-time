@@ -1,10 +1,8 @@
 # ── Core ASR ──────────────────────────────────────────────────────────────────
-# RealtimeSTT wraps faster-whisper + VAD (silero + webrtcvad)
-RealtimeSTT>=0.3.104
-
-# ── Speech processing ─────────────────────────────────────────────────────────
+# Không dùng RealtimeSTT (phụ thuộc PyAudio). Dùng sounddevice + faster-whisper + webrtcvad.
 faster-whisper>=1.0.3
 sounddevice>=0.4.7
+webrtcvad>=2.0.10
 numpy>=1.26.0
 
 # ── Speaker diarization (optional but recommended) ────────────────────────────
