@@ -1,11 +1,13 @@
 """
 Console renderer — subscribes to EventBus events and prints to stdout.
 
-All output goes to stdout; logs go to stderr (via logging).
-This keeps stdout clean for piping/redirecting subtitles if needed.
+Thiết kế giao diện:
+- Phụ đề hiển thị realtime (partial)
+- Khi enriched: phụ đề màu theo người nói, bản dịch hiển thị bên dưới
 """
 from __future__ import annotations
 
+import re
 import sys
 import logging
 from typing import Optional
@@ -32,17 +34,26 @@ def _c(code: str, text: str) -> str:
     return f"\033[{code}m{text}\033[0m"
 
 
-CYAN = "36"
-GREEN = "32"
-YELLOW = "33"
-MAGENTA = "35"
-BLUE = "34"
+# Màu cho từng người nói (speaker_1, speaker_2, ...)
+SPEAKER_COLORS = ["36", "32", "33", "35", "34", "31"]  # cyan, green, yellow, magenta, blue, red
 BOLD = "1"
 DIM = "2"
 
 
+def _speaker_color(speaker_id: Optional[str]) -> str:
+    """Màu ANSI theo speaker_id."""
+    if not speaker_id:
+        return DIM
+    m = re.match(r"speaker_(\d+)", speaker_id or "", re.I)
+    if m:
+        idx = int(m.group(1)) - 1
+        if 0 <= idx < len(SPEAKER_COLORS):
+            return SPEAKER_COLORS[idx]
+    return DIM
+
+
 class ConsoleRenderer:
-    """Handles all pretty-printing of pipeline events to stdout."""
+    """Giao diện hiển thị phụ đề: partial realtime, enriched block với màu speaker + dịch."""
 
     def __init__(self) -> None:
         self._last_partial_len = 0  # for in-place overwrite
@@ -52,49 +63,37 @@ class ConsoleRenderer:
     # ------------------------------------------------------------------
 
     async def on_partial(self, event: PartialUpdatedEvent) -> None:
+        """Phụ đề đang nhận dạng — cập nhật tại chỗ."""
         text = event.text.strip()
         if not text:
             return
-        # Overwrite the current line in-place to avoid flicker
-        line = _c(DIM, f"[partial] {text}")
+        line = _c(DIM, f"  {text}")
         if _USE_COLOR:
-            # carriage return, clear to end of line
             sys.stdout.write(f"\r{line}\033[K")
             sys.stdout.flush()
         else:
-            sys.stdout.write(f"\r[partial] {text}")
+            sys.stdout.write(f"\r  {text}")
             sys.stdout.flush()
         self._last_partial_len = len(text)
 
     async def on_stabilized(self, event: StabilizedUpdatedEvent) -> None:
-        text = event.text.strip()
-        if not text:
-            return
-        # Print on a new line (stabilized supersedes partial)
-        self._newline_if_needed()
-        print(_c(CYAN, f"[stabilized] {text}"), flush=True)
+        """Text ổn định — giữ partial, không in thêm."""
+        pass
 
     async def on_final(self, event: SentenceFinalizedEvent) -> None:
-        self._newline_if_needed()
-        seg_id = _c(BOLD, event.segment_id)
-        print(_c(GREEN, f"[final][{seg_id}] {event.source_text_final}"), flush=True)
+        """Câu hoàn chỉnh — chờ enriched để in block (không in riêng)."""
+        pass
 
     async def on_speaker_completed(self, event: SpeakerCompletedEvent) -> None:
-        seg_id = _c(BOLD, event.segment_id)
-        conf = f"{event.confidence:.0%}"
-        print(
-            _c(YELLOW, f"[speaker][{seg_id}] {event.speaker_id}  (conf {conf})"),
-            flush=True,
-        )
+        """Speaker xong — xử lý trong enriched."""
+        pass
 
     async def on_translation_completed(self, event: TranslationCompletedEvent) -> None:
-        seg_id = _c(BOLD, event.segment_id)
-        print(
-            _c(BLUE, f"[translation][{seg_id}] {event.translated_text}"),
-            flush=True,
-        )
+        """Dịch xong — xử lý trong enriched."""
+        pass
 
     async def on_segment_enriched(self, event: SegmentEnrichedEvent) -> None:
+        """Segment đủ speaker + dịch — in block: phụ đề (màu speaker) + dịch bên dưới."""
         seg = event.segment
         if seg is None:
             return
@@ -107,37 +106,47 @@ class ConsoleRenderer:
     @staticmethod
     def print_banner(session_id: str) -> None:
         print("─" * 60, flush=True)
-        print(_c(BOLD, " realtime-subtitle  |  local speech pipeline"), flush=True)
+        print(_c(BOLD, " realtime-subtitle  |  phụ đề + dịch realtime"), flush=True)
         print(f" session: {session_id}", flush=True)
         print("─" * 60, flush=True)
 
     @staticmethod
     def print_listening() -> None:
-        print(_c(MAGENTA, "[recorder] listening …"), flush=True)
+        print(_c(DIM, "  [đang nghe…]"), flush=True)
 
     @staticmethod
     def print_shutdown() -> None:
-        print("\n" + _c(BOLD, "[system] graceful shutdown complete."), flush=True)
+        print("\n" + _c(BOLD, "[kết thúc]"), flush=True)
 
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
 
     def _newline_if_needed(self) -> None:
-        """Ensure we start on a fresh line after an in-place partial line."""
+        """Xuống dòng sau partial in-place."""
         if self._last_partial_len > 0:
             sys.stdout.write("\n")
             sys.stdout.flush()
             self._last_partial_len = 0
 
-    @staticmethod
-    def _print_enriched(seg: Segment) -> None:
+    def _print_enriched(self, seg: Segment) -> None:
+        """In block: phụ đề (màu speaker) + dịch bên dưới."""
+        self._newline_if_needed()
+
         speaker = seg.speaker_id or "unknown"
-        translation = seg.translated_text or "(no translation)"
-        print(
-            _c(MAGENTA, f"[enriched][{seg.segment_id}][{speaker}]"),
-            flush=True,
-        )
-        print(f"  SRC : {seg.source_text_final}", flush=True)
-        print(f"  TRX : {translation}", flush=True)
-        print("", flush=True)
+        color = _speaker_color(speaker)
+        subtitle = seg.source_text_final or ""
+        translation = seg.translated_text or ""
+
+        # Dòng 1: phụ đề (màu theo người nói)
+        label = f"[{speaker}] "
+        line1 = _c(color, label + subtitle)
+        print(line1, flush=True)
+
+        # Dòng 2: bản dịch (nếu có và khác phụ đề), thụt vào cho đẹp
+        if translation and translation.strip() != subtitle.strip():
+            indent = " " * len(label)
+            line2 = _c(DIM, indent + translation)
+            print(line2, flush=True)
+
+        print(flush=True)
