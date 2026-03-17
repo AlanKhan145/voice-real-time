@@ -41,6 +41,11 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--no-translation", action="store_true", help="Disable translation")
     p.add_argument("--speaker-provider", default=None, choices=["local", "noop"])
     p.add_argument("--translation-provider", default=None, choices=["argos", "noop"])
+    p.add_argument(
+        "--input-device",
+        default=None,
+        help="Input device index hoặc tên (mặc định: device hệ điều hành)",
+    )
     p.add_argument("--web", action="store_true", help="Chạy web server thay vì CLI")
     p.add_argument("--port", default=8000, type=int, help="Port web server (mặc định 8000)")
     return p.parse_args()
@@ -66,6 +71,8 @@ def _apply_args_to_env(args: argparse.Namespace) -> None:
         os.environ.setdefault("SPEAKER_PROVIDER", args.speaker_provider)
     if args.translation_provider:
         os.environ.setdefault("TRANSLATION_PROVIDER", args.translation_provider)
+    if getattr(args, "input_device", None):
+        os.environ.setdefault("INPUT_DEVICE", str(args.input_device))
 
 
 # ─────────────────────────────────────────────────────────────────────────────

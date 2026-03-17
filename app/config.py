@@ -70,6 +70,11 @@ class Config:
     # ── Worker concurrency ─────────────────────────────────────────────────
     worker_max_threads: int = 4
 
+    # ── Audio device ───────────────────────────────────────────────────────
+    # None  → dùng input device mặc định của hệ điều hành
+    # string→ tên thiết bị hoặc index (chuỗi số) cho sounddevice
+    input_device: Optional[str] = None
+
     @classmethod
     def from_env(cls) -> Config:
         """Load config, optionally reading .env file first."""
@@ -96,6 +101,7 @@ class Config:
             log_level=os.getenv("LOG_LEVEL", "INFO"),
             log_file=os.getenv("LOG_FILE"),
             worker_max_threads=_int("WORKER_MAX_THREADS", 4),
+            input_device=os.getenv("INPUT_DEVICE") or None,
         )
 
 

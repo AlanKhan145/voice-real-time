@@ -89,6 +89,13 @@ class SoundDeviceRecorder:
         self._realtime_model: Optional[WhisperModel] = None
         self._model_lock = threading.Lock()
 
+        # Input device: None → default device, otherwise index hoặc tên
+        raw_device = config.input_device
+        if raw_device and raw_device.isdigit():
+            self._input_device: Optional[int | str] = int(raw_device)
+        else:
+            self._input_device = raw_device
+
         # Energy-based VAD (không dùng webrtcvad/pkg_resources)
         # webrtc_sensitivity 0-3: 0=sensitive, 3=strict
         self._energy_threshold = 200 + 200 * config.webrtc_sensitivity
@@ -171,6 +178,7 @@ class SoundDeviceRecorder:
                 dtype="int16",
                 blocksize=_FRAME_BYTES // 2,  # số samples
                 callback=self._audio_callback,
+                device=self._input_device,
             ) as stream:
                 self._stream = stream
                 logger.info("Microphone opened, entering VAD loop")
