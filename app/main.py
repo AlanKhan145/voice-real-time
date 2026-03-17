@@ -41,6 +41,8 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--no-translation", action="store_true", help="Disable translation")
     p.add_argument("--speaker-provider", default=None, choices=["local", "noop"])
     p.add_argument("--translation-provider", default=None, choices=["argos", "noop"])
+    p.add_argument("--web", action="store_true", help="Chạy web server thay vì CLI")
+    p.add_argument("--port", default=8000, type=int, help="Port web server (mặc định 8000)")
     return p.parse_args()
 
 
@@ -222,6 +224,13 @@ def main() -> None:
     setup_logging(config.log_level, config.log_file)
 
     logger.debug("Config: %s", config)
+
+    if args.web:
+        import uvicorn
+        from app.web_server import app
+        logger.info("Web server: http://localhost:%s", args.port)
+        uvicorn.run(app, host="0.0.0.0", port=args.port)
+        return
 
     try:
         asyncio.run(run(config))

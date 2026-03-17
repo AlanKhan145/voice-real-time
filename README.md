@@ -150,6 +150,14 @@ cp .env.example .env
 python -m app.main
 ```
 
+### Chế độ Web (giao diện trình duyệt)
+
+```bash
+python -m app.main --web
+# Mở http://localhost:8000
+# Bấm "Bắt đầu" để nghe, "Dừng" để tắt
+```
+
 ### Các tùy chọn CLI phổ biến
 
 ```bash
